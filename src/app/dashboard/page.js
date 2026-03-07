@@ -1,53 +1,183 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { Plus, CheckCircle, AlertCircle, Calendar } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
-  const router = useRouter();
+  const [form, setForm] = useState({ did: "", blockers: "", plan: "" });
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
+  const router = useRouter();
 
+  // TODO: useEffect to get user and fetch logs on page load
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push("/login");
-      else setUser(user);
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error) router.push("/login");
+      setUser(user);
+      fetchLogs(user.id);
     };
     getUser();
   }, []);
 
-  const handleLogout = async () => {
+  // TODO: fetchLogs function - fetch logs from supabase for current user
+  const fetchLogs = async (userId) => {
+    const { data, error } = await supabase
+      .from("log")
+      .select("*")
+      .eq("user_id", userId);
+    if (error) return;
+    setLogs(data);
+  };
+
+  // TODO: handleSubmit function - save form data to supabase
+  const handleSubmit = async () => {
+    if (!form.did) return;
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("log")
+      .insert({
+        user_id: user.id,
+        did: form.did,
+        blockers: form.blockers,
+        plan: form.plan,
+      })
+      .select();
+    if (error) {
+      setMessage("❌ Error: " + error.message);
+      setLoading(false);
+      return;
+    }
+    setForm({ did: "", blockers: "", plan: "" });
+    setMessage("✅ Log saved!");
+    setLoading(false);
+    fetchLogs(user.id);
+  };
+
+  // TODO: handleLogout function - sign out and redirect to login
+  const handleLogOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
 
-  if (!user) return (
-    <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-gray-400">Loading...</p>
-    </main>
-  );
-
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
       <div className="max-w-3xl mx-auto">
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-purple-400">DevLog 🚀</h1>
-            <p className="text-gray-400 text-sm mt-1">Welcome, {user.email}</p>
+            <p className="text-gray-400 text-sm mt-1">Welcome back!</p>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={handleLogOut}
             className="bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 px-4 py-2 rounded-lg transition"
           >
             Logout
           </button>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
-          <p className="text-4xl mb-3">📝</p>
-          <p className="text-gray-300 font-medium">Dashboard coming soon!</p>
-          <p className="text-gray-500 text-sm mt-1">Standup form goes here next</p>
+        {/* Form */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8">
+          <h2 className="text-lg font-semibold mb-4 text-gray-200">
+            Today's Standup 📝
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-green-400 flex items-center gap-2 mb-1">
+                <CheckCircle size={14} /> What did you do today?
+              </label>
+              <textarea
+                className="w-full bg-gray-800 rounded-lg p-3 text-sm text-white resize-none outline-none border border-gray-700 focus:border-purple-500"
+                rows={2}
+                placeholder="e.g. Built login page, fixed navbar bug..."
+                value={form.did}
+                onChange={(e) => setForm({ ...form, did: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-red-400 flex items-center gap-2 mb-1">
+                <AlertCircle size={14} /> Any blockers?
+              </label>
+              <textarea
+                className="w-full bg-gray-800 rounded-lg p-3 text-sm text-white resize-none outline-none border border-gray-700 focus:border-purple-500"
+                rows={2}
+                placeholder="e.g. Stuck on API integration..."
+                value={form.blockers}
+                onChange={(e) => setForm({ ...form, blockers: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-blue-400 flex items-center gap-2 mb-1">
+                <Calendar size={14} /> Plan for tomorrow?
+              </label>
+              <textarea
+                className="w-full bg-gray-800 rounded-lg p-3 text-sm text-white resize-none outline-none border border-gray-700 focus:border-purple-500"
+                rows={2}
+                placeholder="e.g. Work on dashboard UI..."
+                value={form.plan}
+                onChange={(e) => setForm({ ...form, plan: e.target.value })}
+              />
+            </div>
+
+            {message && (
+              <p className="text-sm text-green-400 bg-green-950 border border-green-800 rounded-lg p-3">
+                {message}
+              </p>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition"
+            >
+              <Plus size={18} />
+              {loading ? "Saving..." : "Log Today's Standup"}
+            </button>
+          </div>
         </div>
+
+        {/* Previous Logs */}
+        {logs.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4 text-gray-300">
+              Previous Logs 📅
+            </h2>
+            <div className="space-y-4">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="bg-gray-900 border border-gray-800 rounded-2xl p-5"
+                >
+                  <p className="text-xs text-gray-500 mb-3">
+                    {new Date(log.created_at).toLocaleDateString("en-IN", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                  <p className="text-sm text-green-400">✅ {log.did}</p>
+                  {log.blockers && (
+                    <p className="text-sm text-red-400 mt-1">
+                      🚧 {log.blockers}
+                    </p>
+                  )}
+                  {log.plan && (
+                    <p className="text-sm text-blue-400 mt-1">📅 {log.plan}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
