@@ -10,6 +10,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
+  const [summary, setSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const router = useRouter();
 
   // TODO: useEffect to get user and fetch logs on page load
@@ -65,6 +67,18 @@ export default function Dashboard() {
   const handleLogOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  const generateSummary = async () => {
+    setSummaryLoading(true);
+    const response = await fetch("/api/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ logs: logs.slice(0, 7) }), // bcz we have 3 value in form blocker,did and plan
+    });
+    const data = await response.json();
+    setSummary(data.summary);
+    setSummaryLoading(false);
   };
 
   return (
@@ -143,6 +157,25 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* Button For getSummary */}
+        
+        <button
+          onClick={generateSummary}
+          disabled={summaryLoading}
+          className="bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-sm text-gray-300 px-4 py-2 rounded-lg transition"
+        >
+          {summaryLoading ? "Generating..." : "🤖 Get Weekly Summary"}
+        </button>
+
+        {summary && (
+          <div className="bg-gray-900 border border-purple-800 rounded-2xl p-6 my-4">
+            <h2 className="text-lg font-semibold text-purple-400 mb-3">
+              🤖 Weekly Summary
+            </h2>
+            <p className="text-sm text-gray-300 leading-relaxed">{summary}</p>
+          </div>
+        )}
 
         {/* Previous Logs */}
         {logs.length > 0 && (
