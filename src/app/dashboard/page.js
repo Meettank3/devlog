@@ -116,6 +116,16 @@ export default function Dashboard() {
             <p className="text-gray-400 text-sm mt-1">
               Welcome, {user?.email}
             </p>{" "}
+            <p className="text-orange-400 text-sm mt-1">
+              🔥 {streak} day streak
+            </p>
+            {logs.length > 0 &&
+            new Date(logs[0].created_at).toDateString() ===
+              new Date().toDateString() ? (
+              <p className="text-green-400 text-xs mt-1">✅ Logged today</p>
+            ) : (
+              <p className="text-red-400 text-xs mt-1">⚠️ Not logged today</p>
+            )}
           </div>
           <button
             onClick={handleLogOut}
@@ -124,8 +134,6 @@ export default function Dashboard() {
             Logout
           </button>
         </div>
-
-        <p className="text-orange-400 text-sm mt-1">🔥 {streak} day streak</p>
 
         {/* Form */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8">
