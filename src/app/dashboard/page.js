@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [summary, setSummary] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [streak, setStreak] = useState(0);
   const router = useRouter();
 
   // TODO: useEffect to get user and fetch logs on page load
@@ -36,6 +37,7 @@ export default function Dashboard() {
       .eq("user_id", userId);
     if (error) return;
     setLogs(data);
+    setStreak(calculateStreak(data));
   };
 
   // TODO: handleSubmit function - save form data to supabase
@@ -81,6 +83,29 @@ export default function Dashboard() {
     setSummaryLoading(false);
   };
 
+  const calculateStreak = (logs) => {
+    if (!logs || logs.length === 0) return 0;
+
+    logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    let count = 0;
+    for (let i = 0; i < logs.length; i++) {
+      const logDate = new Date(logs[i].created_at);
+      logDate.setHours(0, 0, 0, 0);
+
+      const expectedDate = new Date();
+      expectedDate.setHours(0, 0, 0, 0);
+      expectedDate.setDate(expectedDate.getDate() - i);
+
+      if (logDate.getTime() === expectedDate.getTime()) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  };
+
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
       <div className="max-w-3xl mx-auto">
@@ -88,7 +113,9 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-purple-400">DevLog 🚀</h1>
-            <p className="text-gray-400 text-sm mt-1">Welcome back!</p>
+            <p className="text-gray-400 text-sm mt-1">
+              Welcome, {user?.email}
+            </p>{" "}
           </div>
           <button
             onClick={handleLogOut}
@@ -97,6 +124,8 @@ export default function Dashboard() {
             Logout
           </button>
         </div>
+
+        <p className="text-orange-400 text-sm mt-1">🔥 {streak} day streak</p>
 
         {/* Form */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8">
@@ -159,7 +188,7 @@ export default function Dashboard() {
         </div>
 
         {/* Button For getSummary */}
-        
+
         <button
           onClick={generateSummary}
           disabled={summaryLoading}
@@ -178,11 +207,19 @@ export default function Dashboard() {
         )}
 
         {/* Previous Logs */}
-        {logs.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-4 text-gray-300">
-              Previous Logs 📅
-            </h2>
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-4 text-gray-300">
+            Previous Logs 📅
+          </h2>
+          {logs.length === 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+              <p className="text-4xl mb-3">📝</p>
+              <p className="text-gray-400">
+                No logs yet. Submit your first standup above!
+              </p>
+            </div>
+          )}
+          {logs.length > 0 && (
             <div className="space-y-4">
               {logs.map((log) => (
                 <div
@@ -209,8 +246,8 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </main>
   );
